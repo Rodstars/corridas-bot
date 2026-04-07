@@ -130,9 +130,44 @@ def salvar_excel(titulo, link, score):
 # =========================
 
 def processar():
-    print("🔥 TESTE NUVEM")
+    eventos = buscar_eventos()
 
-    enviar_telegram("🚀 TESTE DIRETO DA NUVEM")
+    print(f"🔍 Encontrados: {len(eventos)}")
+
+    for titulo, link in eventos:
+
+        #if not eh_df(titulo):
+        #    continue
+
+        score = calcular_score(titulo)
+
+        #if score < 80:
+        #    continue
+
+        h = gerar_hash(titulo, link)
+
+        try:
+            cursor.execute(
+                "INSERT INTO eventos (hash, titulo, link, score) VALUES (?, ?, ?, ?)",
+                (h, titulo, link, score)
+            )
+            conn.commit()
+
+            salvar_excel(titulo, link, score)
+
+            mensagem = f"""
+🚨 *CORRIDA GRATUITA DETECTADA*
+
+🏷 {titulo}
+📊 Score: {score}
+
+🔗 {link}
+"""
+
+            enviar_telegram(mensagem)
+
+        except:
+            pass
 
 
 # =========================
