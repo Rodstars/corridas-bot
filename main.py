@@ -130,9 +130,13 @@ def salvar_excel(titulo, link, score):
 # =========================
 
 def processar():
-    print("🔥 TESTE TELEGRAM NUVEM")
+    print("🔥 TESTE FINAL TELEGRAM")
 
-    enviar_telegram("🚀 FUNCIONANDO NA NUVEM")
+    print("TOKEN:", TOKEN)
+    print("CHAT_ID:", CHAT_ID)
+
+    enviar_telegram("🚀 TESTE FINAL - AGORA VAI")
+
 
 # =========================
 # LOOP
