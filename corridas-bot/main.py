@@ -141,7 +141,7 @@ def processar():
 
         score = calcular_score(titulo)
 
-        if score < 20:
+        if score < 80:
             continue
 
         h = gerar_hash(titulo, link)
