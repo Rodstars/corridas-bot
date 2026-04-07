@@ -153,6 +153,7 @@ def processar():
             )
             conn.commit()
 
+            print("📊 SALVANDO NO EXCEL:", titulo)
             salvar_excel(titulo, link, score)
 
             mensagem = f"""
