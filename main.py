@@ -134,9 +134,6 @@ def processar():
 
     enviar_telegram("🚀 TESTE DIRETO DA NUVEM")
 
-        except:
-            pass
-
 
 # =========================
 # LOOP
