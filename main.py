@@ -203,55 +203,12 @@ def salvar_excel(titulo, link, score, data, preco, distancia, kit):
 # =========================
 
 def processar():
-    eventos = buscar_eventos()
+    print("🔥 TESTE DEBUG")
 
-    print(f"🔍 Encontrados: {len(eventos)}")
+    print("TOKEN:", TOKEN)
+    print("CHAT_ID:", CHAT_ID)
 
-    for titulo, link in eventos:
-
-        if not eh_df(titulo):
-            continue
-
-        score = calcular_score(titulo)
-
-        if score < 50:
-            continue
-
-        h = gerar_hash(titulo, link)
-
-        try:
-            cursor.execute(
-                "INSERT INTO eventos (hash, titulo, link, score) VALUES (?, ?, ?, ?)",
-                (h, titulo, link, score)
-            )
-            conn.commit()
-
-            print("🔎 Analisando:", titulo)
-
-            data, preco, distancia, kit = extrair_detalhes(link)
-
-            print("📊 SALVANDO NO EXCEL:", titulo)
-
-            salvar_excel(titulo, link, score, data, preco, distancia, kit)
-
-            mensagem = f"""
-🚨 *CORRIDA ENCONTRADA*
-
-🏷 {titulo}
-📅 Data: {data}
-💰 Preço: {preco}
-📏 Distância: {distancia}
-🎽 Kit: {kit}
-
-🔗 {link}
-"""
-
-            enviar_telegram(mensagem)
-
-        except Exception as e:
-            print("Evento já existe ou erro:", e)
-
-
+    enviar_telegram("🚀 TESTE DEBUG TELEGRAM")
 # =========================
 # LOOP
 # =========================
