@@ -5,9 +5,10 @@ import sqlite3
 import time
 import hashlib
 import os
+import re
 
 # =========================
-# CONFIG
+# CONFIG (Railway)
 # =========================
 #TOKEN = "8643526470:AAEqdTHnTz1YNRP7aSntyS93ULbTnChkMjA"
 #CHAT_ID = "1169857949"
@@ -46,18 +47,23 @@ def calcular_score(texto):
     t = texto.lower()
     score = 0
 
-    for p in PALAVRAS_GRATUITO:
-        if p in t:
-            score += 100
+    if any(p in t for p in PALAVRAS_DF):
+        score += 30
 
-    for p in PALAVRAS_ORGAOS:
-        if p in t:
-            score += 60
+    if any(p in t for p in PALAVRAS_GRATUITO):
+        score += 100
 
-    if "r$" not in t:
-        score += 20
-    else:
-        score -= 100
+    if any(p in t for p in PALAVRAS_ORGAOS):
+        score += 40
+
+    if "r$" in t:
+        valores = re.findall(r"\d+", t)
+        if valores:
+            preco = int(valores[0])
+            if preco <= 100:
+                score += 80
+            else:
+                score -= 50
 
     return score
 
@@ -73,11 +79,12 @@ def gerar_hash(titulo, link):
 
 def enviar_telegram(msg):
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-    requests.post(url, data={
+    response = requests.post(url, data={
         "chat_id": CHAT_ID,
         "text": msg,
         "parse_mode": "Markdown"
     })
+    print("Resposta Telegram:", response.text)
 
 
 # =========================
@@ -97,36 +104,102 @@ def buscar_eventos():
             link = item.get("href")
 
             if titulo and link:
+                if not link.startswith("http"):
+                    link = "https://www.corridasbr.com.br/df/" + link
+
                 eventos.append((titulo, link))
 
     except Exception as e:
-        print("Erro:", e)
+        print("Erro ao buscar eventos:", e)
 
     return eventos
+
+
+# =========================
+# EXTRAÇÃO AVANÇADA
+# =========================
+
+def extrair_detalhes(link):
+    try:
+        response = requests.get(link, timeout=10)
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        texto = soup.get_text().lower()
+
+        # 📅 DATA
+        data = "N/A"
+        datas = re.findall(r"\d{1,2}/\d{1,2}/\d{2,4}", texto)
+        if datas:
+            data = datas[0]
+
+        # 💰 PREÇO
+        preco = "N/A"
+        valores = re.findall(r"r\$\s*\d+", texto)
+        if valores:
+            preco = valores[0]
+
+        # 📏 DISTÂNCIA
+        distancia = "N/A"
+        if "5k" in texto:
+            distancia = "5km"
+        elif "10k" in texto:
+            distancia = "10km"
+        elif "21k" in texto:
+            distancia = "21km"
+
+        # 🎽 KIT
+        kit = []
+        if "camiseta" in texto:
+            kit.append("Camiseta")
+        if "medalha" in texto:
+            kit.append("Medalha")
+        if "boné" in texto:
+            kit.append("Boné")
+
+        kit = ", ".join(kit) if kit else "N/A"
+
+        return data, preco, distancia, kit
+
+    except Exception as e:
+        print("Erro ao extrair detalhes:", e)
+        return "N/A", "N/A", "N/A", "N/A"
 
 
 # =========================
 # EXCEL
 # =========================
 
-def salvar_excel(titulo, link, score):
+def salvar_excel(titulo, link, score, data, preco, distancia, kit):
+
     arquivo = "corridas.xlsx"
 
     if not os.path.exists(arquivo):
         wb = Workbook()
         ws = wb.active
-        ws.append(["Título", "Link", "Score"])
+        ws.append([
+            "Título", "Link", "Data", "Preço",
+            "Distância", "Kit", "Score"
+        ])
         wb.save(arquivo)
 
     wb = load_workbook(arquivo)
     ws = wb.active
 
-    ws.append([titulo, link, score])
+    ws.append([
+        titulo,
+        link,
+        data,
+        preco,
+        distancia,
+        kit,
+        score
+    ])
+
     wb.save(arquivo)
 
 
 # =========================
-# PROCESSAMENTO (TESTE)
+# PROCESSAMENTO
 # =========================
 
 def processar():
@@ -136,12 +209,12 @@ def processar():
 
     for titulo, link in eventos:
 
-        #if not eh_df(titulo):
-        #    continue
+        if not eh_df(titulo):
+            continue
 
         score = calcular_score(titulo)
 
-        if score < 20:
+        if score < 50:
             continue
 
         h = gerar_hash(titulo, link)
@@ -153,22 +226,30 @@ def processar():
             )
             conn.commit()
 
+            print("🔎 Analisando:", titulo)
+
+            data, preco, distancia, kit = extrair_detalhes(link)
+
             print("📊 SALVANDO NO EXCEL:", titulo)
-            salvar_excel(titulo, link, score)
+
+            salvar_excel(titulo, link, score, data, preco, distancia, kit)
 
             mensagem = f"""
-🚨 *CORRIDA GRATUITA DETECTADA*
+🚨 *CORRIDA ENCONTRADA*
 
 🏷 {titulo}
-📊 Score: {score}
+📅 Data: {data}
+💰 Preço: {preco}
+📏 Distância: {distancia}
+🎽 Kit: {kit}
 
 🔗 {link}
 """
 
             enviar_telegram(mensagem)
 
-        except:
-            pass
+        except Exception as e:
+            print("Evento já existe ou erro:", e)
 
 
 # =========================
@@ -176,6 +257,6 @@ def processar():
 # =========================
 
 while True:
-    print("🔍 Rodando...")
+    print("🔄 Rodando...")
     processar()
     time.sleep(600)
