@@ -13,8 +13,8 @@ import re
 #TOKEN = "8643526470:AAEqdTHnTz1YNRP7aSntyS93ULbTnChkMjA"
 #CHAT_ID = "1169857949"
 
-TOKEN = os.getenv("8643526470:AAEqdTHnTz1YNRP7aSntyS93ULbTnChkMjA")
-CHAT_ID = os.getenv("1169857949")
+TOKEN = "8643526470:AAEqdTHnTz1YNRP7aSntyS93ULbTnChkMjA"
+CHAT_ID = "1169857949"
 
 # =========================
 # BANCO
@@ -203,12 +203,55 @@ def salvar_excel(titulo, link, score, data, preco, distancia, kit):
 # =========================
 
 def processar():
-    print("🔥 TESTE DEBUG")
+    eventos = buscar_eventos()
 
-    print("TOKEN:", TOKEN)
-    print("CHAT_ID:", CHAT_ID)
+    print(f"🔍 Encontrados: {len(eventos)}")
 
-    enviar_telegram("🚀 TESTE DEBUG TELEGRAM")
+    for titulo, link in eventos:
+
+        if not eh_df(titulo):
+            continue
+
+        score = calcular_score(titulo)
+
+        if score < 50:
+            continue
+
+        h = gerar_hash(titulo, link)
+
+        try:
+            cursor.execute(
+                "INSERT INTO eventos (hash, titulo, link, score) VALUES (?, ?, ?, ?)",
+                (h, titulo, link, score)
+            )
+            conn.commit()
+
+            print("🔎 Analisando:", titulo)
+
+            data, preco, distancia, kit = extrair_detalhes(link)
+
+            print("📊 SALVANDO NO EXCEL:", titulo)
+
+            salvar_excel(titulo, link, score, data, preco, distancia, kit)
+
+            mensagem = f"""
+🚨 *CORRIDA ENCONTRADA*
+
+🏷 {titulo}
+📅 Data: {data}
+💰 Preço: {preco}
+📏 Distância: {distancia}
+🎽 Kit: {kit}
+
+🔗 {link}
+"""
+
+            enviar_telegram(mensagem)
+
+        except sqlite3.IntegrityError:
+            print("⚠️ Evento já registrado, ignorando...") 
+
+            
 # =========================
 # LOOP
 # =========================
